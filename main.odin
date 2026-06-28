@@ -1,5 +1,6 @@
 package main
 
+import "core:math"
 import rl "vendor:raylib"
 
 GRID_SIZE: int : 6
@@ -123,22 +124,37 @@ main :: proc() {
 	place_wall(&lair, {x = 2, y = 1}, Wall_Side.South)
 
 
-	screen_width :: 1000
-	screen_height :: 800
+	screen_width :: 1280
+	screen_height :: 720
+
+	rl.SetConfigFlags(rl.ConfigFlags{.WINDOW_RESIZABLE})
+
 	rl.InitWindow(screen_width, screen_height, "Title")
 	defer rl.CloseWindow()
 	rl.SetTargetFPS(60)
 	rl.SetExitKey(.ESCAPE)
 
-	cell_width := screen_width / GRID_SIZE
-	cell_height := screen_height / GRID_SIZE
+	camera := rl.Camera2D{}
+	camera.target = {CELL_SIZE * f32(GRID_SIZE) / 2, CELL_SIZE * f32(GRID_SIZE) / 2}
+	camera.offset = rl.Vector2{f32(rl.GetScreenWidth()) / 2.0, f32(rl.GetScreenHeight()) / 2.0}
+	camera.zoom = 1
 
 	for !rl.WindowShouldClose() {
+		if rl.IsWindowResized() {
+			scale_x := f32(rl.GetScreenWidth()) / f32(screen_width)
+			scale_y := f32(rl.GetScreenHeight()) / f32(screen_height)
+			scale: f32 = math.min(scale_x, scale_y)
+
+			camera.zoom = scale
+			camera.offset = {f32(rl.GetScreenWidth() / 2), f32(rl.GetScreenHeight() / 2)}
+		}
+
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
 		rl.ClearBackground(rl.WHITE)
-
+		rl.BeginMode2D(camera)
 		draw_grid(&lair)
+		rl.EndMode2D()
 	}
 }
 
