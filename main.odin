@@ -1,6 +1,5 @@
 package main
 
-import "core:fmt"
 import rl "vendor:raylib"
 
 GRID_SIZE: int : 6
@@ -123,7 +122,6 @@ main :: proc() {
 	place_wall(&lair, {x = 1, y = 1}, Wall_Side.South)
 	place_wall(&lair, {x = 2, y = 1}, Wall_Side.South)
 
-	// print_grid(&lair)
 
 	screen_width :: 1000
 	screen_height :: 800
@@ -144,64 +142,6 @@ main :: proc() {
 	}
 }
 
-// --- VISUAL GRID PRINTING ---
-print_grid :: proc(lair: ^Lair) {
-	// Column headers
-	fmt.print("      ")
-	for x in 0 ..< GRID_SIZE {
-		fmt.printf("  %d   ", x)
-	}
-	fmt.println("")
-
-	for y in 0 ..< GRID_SIZE {
-		// Top border
-		fmt.printf("  %d    +", y)
-		for x in 0 ..< GRID_SIZE {
-			cell := lair.grid[y][x]
-			if Wall_Side.North in cell.walls {
-				fmt.print("=====+")
-			} else {
-				fmt.print(" . . +")
-			}
-		}
-		fmt.println("")
-
-		// Cells
-		fmt.print("       ")
-		for x in 0 ..< GRID_SIZE {
-			cell := lair.grid[y][x]
-
-			if Wall_Side.West in cell.walls {
-				fmt.print("| ")
-			} else {
-				fmt.print(": ")
-			}
-
-			fmt.printf("%d,%d ", x, y)
-		}
-
-		// Right wall
-		last_cell := lair.grid[y][GRID_SIZE - 1]
-		if Wall_Side.East in last_cell.walls {
-			fmt.println("|")
-		} else {
-			fmt.println(":")
-		}
-	}
-
-	// Bottom border
-	fmt.print("       +")
-	for x in 0 ..< GRID_SIZE {
-		cell := lair.grid[GRID_SIZE - 1][x]
-		if Wall_Side.South in cell.walls {
-			fmt.print("=====+")
-		} else {
-			fmt.print(" . . +")
-		}
-	}
-	fmt.println("")
-}
-
 draw_walls :: proc(cell: Space, x: f32, y: f32, size: f32) {
 	if has_wall(cell, Wall_Side.North) {
 		rl.DrawRectangleRec(
@@ -209,20 +149,25 @@ draw_walls :: proc(cell: Space, x: f32, y: f32, size: f32) {
 			rl.BLACK,
 		)
 	}
-	// if has_wall(cell, Wall_Side.South) {
-	// 	rl.DrawLineEx(
-	// 		rl.Vector2{x, (y + size)},
-	// 		rl.Vector2{x + size, y + size},
-	// 		INSET / 2,
-	// 		rl.BLACK,
-	// 	)
-	// }
-	// if has_wall(cell, Wall_Side.East) {
-	// 	rl.DrawLineEx(rl.Vector2{x + size, y}, rl.Vector2{x + size, y + size}, INSET, rl.BLACK)
-	// }
-	// if has_wall(cell, Wall_Side.West) {
-	// 	rl.DrawLineEx(rl.Vector2{x, y}, rl.Vector2{x, y + size}, INSET, rl.BLACK)
-	// }
+	if has_wall(cell, Wall_Side.South) {
+		rl.DrawRectangleRec(
+			rl.Rectangle{x = x, y = y + size, width = size, height = INSET / 2},
+			rl.BLACK,
+		)
+	}
+	if has_wall(cell, Wall_Side.East) {
+		rl.DrawRectangleRec(
+			rl.Rectangle{x = x + size, y = y, width = INSET / 2, height = size},
+			rl.BLACK,
+		)
+	}
+	if has_wall(cell, Wall_Side.West) {
+		// rl.DrawLineEx(rl.Vector2{x, y}, rl.Vector2{x, y + size}, INSET, rl.BLACK)
+		rl.DrawRectangleRec(
+			rl.Rectangle{x = x - INSET / 2, y = y, width = INSET / 2, height = size},
+			rl.BLACK,
+		)
+	}
 }
 
 draw_corners :: proc(cell: Space, x: int, y: int, size: f32) {
@@ -231,11 +176,65 @@ draw_corners :: proc(cell: Space, x: int, y: int, size: f32) {
 	px := f32(x) * CELL_SIZE + (INSET / 2)
 	py := f32(y) * CELL_SIZE + (INSET / 2)
 
-	// rl.DrawPixel(i32(px), i32(py), rl.RED)
-	// rl.DrawPixel(i32(cell_start_x), i32(py), rl.RED)
-	rl.DrawRectangleRec(
-		rl.Rectangle{x = px, y = py, width = INSET / 2, height = INSET / 2},
-		rl.RED,
+	if (y != 0) {
+		if (x != 0) {
+			// top left
+			rl.DrawRectangleRec(
+				rl.Rectangle{x = px, y = py, width = INSET / 2, height = INSET / 2},
+				rl.BLACK,
+			)
+		}
+		if (x != GRID_SIZE - 1) {
+			// top right
+			rl.DrawRectangleRec(
+				rl.Rectangle {
+					x = cell_start_x + size,
+					y = py,
+					width = INSET / 2,
+					height = INSET / 2,
+				},
+				rl.BLACK,
+			)
+		}
+	}
+	if (y != GRID_SIZE - 1) {
+		if (x != 0) {
+			// bottom left
+			rl.DrawRectangleRec(
+				rl.Rectangle {
+					x = px,
+					y = cell_start_y + size,
+					width = INSET / 2,
+					height = INSET / 2,
+				},
+				rl.BLACK,
+			)
+		}
+		if (x != GRID_SIZE - 1) {
+			// bottom right
+			rl.DrawRectangleRec(
+				rl.Rectangle {
+					x = cell_start_x + size,
+					y = cell_start_y + size,
+					width = INSET / 2,
+					height = INSET / 2,
+				},
+				rl.BLACK,
+			)
+		}
+	}
+}
+
+draw_border :: proc() {
+	rl.DrawRectangleLinesEx(
+		rl.Rectangle {
+			x = 0,
+			y = 0,
+			height = CELL_SIZE * f32(GRID_SIZE) + INSET,
+			width = CELL_SIZE * f32(GRID_SIZE) + INSET,
+		},
+		INSET,
+		rl.BLACK,
 	)
 }
 
@@ -258,6 +257,8 @@ draw_grid :: proc(lair: ^Lair) {
 
 			draw_walls(cell, pos_x, pos_y, size)
 			draw_corners(cell, x, y, size)
+			draw_border()
 		}
 	}
 }
+
