@@ -4,6 +4,8 @@ import "core:fmt"
 import rl "vendor:raylib"
 
 GRID_SIZE: int : 6
+CELL_SIZE: f32 : 100
+INSET: f32 : 10
 
 Wall_Side :: enum u8 {
 	North,
@@ -33,11 +35,6 @@ init_lair :: proc(lair: ^Lair) {
 		for x in 0 ..< GRID_SIZE {
 			cell := &lair.grid[y][x]
 			cell.hidden = true
-
-			if y == 0 {cell.walls |= {Wall_Side.North}}
-			if y == GRID_SIZE - 1 {cell.walls |= {Wall_Side.South}}
-			if x == 0 {cell.walls |= {Wall_Side.West}}
-			if x == GRID_SIZE - 1 {cell.walls |= {Wall_Side.East}}
 		}
 
 	}
@@ -114,6 +111,10 @@ set_opposite_wall :: proc(lair: ^Lair, pos: Position, side: Wall_Side) {
 	cell.walls |= {side}
 }
 
+has_wall :: proc(space: Space, side: Wall_Side) -> bool {
+	return side in space.walls
+}
+
 main :: proc() {
 	lair: Lair
 	init_lair(&lair)
@@ -139,13 +140,7 @@ main :: proc() {
 		defer rl.EndDrawing()
 		rl.ClearBackground(rl.WHITE)
 
-		for i in 0 ..< GRID_SIZE {
-			x: i32 = i32(i) * i32(cell_width)
-			y: i32 = i32(i) * i32(cell_height)
-
-			rl.DrawLine(x, 0, x, screen_height, rl.GRAY)
-			rl.DrawLine(0, y, screen_width, y, rl.GRAY)
-		}
+		draw_grid(&lair)
 	}
 }
 
@@ -205,4 +200,64 @@ print_grid :: proc(lair: ^Lair) {
 		}
 	}
 	fmt.println("")
+}
+
+draw_walls :: proc(cell: Space, x: f32, y: f32, size: f32) {
+	if has_wall(cell, Wall_Side.North) {
+		rl.DrawRectangleRec(
+			rl.Rectangle{x = x, y = y - INSET / 2, width = size, height = INSET / 2},
+			rl.BLACK,
+		)
+	}
+	// if has_wall(cell, Wall_Side.South) {
+	// 	rl.DrawLineEx(
+	// 		rl.Vector2{x, (y + size)},
+	// 		rl.Vector2{x + size, y + size},
+	// 		INSET / 2,
+	// 		rl.BLACK,
+	// 	)
+	// }
+	// if has_wall(cell, Wall_Side.East) {
+	// 	rl.DrawLineEx(rl.Vector2{x + size, y}, rl.Vector2{x + size, y + size}, INSET, rl.BLACK)
+	// }
+	// if has_wall(cell, Wall_Side.West) {
+	// 	rl.DrawLineEx(rl.Vector2{x, y}, rl.Vector2{x, y + size}, INSET, rl.BLACK)
+	// }
+}
+
+draw_corners :: proc(cell: Space, x: int, y: int, size: f32) {
+	cell_start_x := f32(x) * CELL_SIZE + INSET
+	cell_start_y := f32(y) * CELL_SIZE + INSET
+	px := f32(x) * CELL_SIZE + (INSET / 2)
+	py := f32(y) * CELL_SIZE + (INSET / 2)
+
+	// rl.DrawPixel(i32(px), i32(py), rl.RED)
+	// rl.DrawPixel(i32(cell_start_x), i32(py), rl.RED)
+	rl.DrawRectangleRec(
+		rl.Rectangle{x = px, y = py, width = INSET / 2, height = INSET / 2},
+		rl.RED,
+	)
+}
+
+draw_grid :: proc(lair: ^Lair) {
+	line_thickness: f32 : 3
+
+	for y in 0 ..< GRID_SIZE {
+		for x in 0 ..< GRID_SIZE {
+			cell := lair.grid[y][x]
+
+			pos_x: f32 = f32(x) * CELL_SIZE + INSET
+			pos_y: f32 = f32(y) * CELL_SIZE + INSET
+			size: f32 = f32(CELL_SIZE - INSET)
+
+			rl.DrawRectangleLinesEx(
+				rl.Rectangle{height = size, width = size, x = pos_x, y = pos_y},
+				line_thickness,
+				rl.BEIGE,
+			)
+
+			draw_walls(cell, pos_x, pos_y, size)
+			draw_corners(cell, x, y, size)
+		}
+	}
 }
