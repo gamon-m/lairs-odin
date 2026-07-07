@@ -2,9 +2,7 @@ package main
 
 import "core:fmt"
 import "core:math"
-import "vendor:portmidi"
 import rl "vendor:raylib"
-import "vendor:stb/truetype"
 
 GRID_SIZE: int : 6
 CELL_SIZE: f32 : 16
@@ -16,6 +14,11 @@ TRAP_LIMIT: int : 3
 TREASURE_LIMIT: int : 3
 START_LIMIT: int : 1
 FINISH_LIMIT: int : 1
+
+Game_States :: enum u8 {
+	Building,
+	Moving,
+}
 
 Wall_Side :: enum u8 {
 	North,
@@ -68,6 +71,8 @@ Lair :: struct {
 	grid:          [GRID_SIZE][GRID_SIZE]Space,
 	placed_counts: Placed_Counts,
 }
+
+game_state: Game_States = .Building
 
 get_sprite :: proc(index, columns, sprite_size: i32) -> rl.Rectangle {
 	x := (index % columns) * sprite_size
@@ -469,14 +474,61 @@ type_at_limit :: proc(lair: ^Lair, type: Cell_Type) -> bool {
 }
 
 draw_debug :: proc(lair: ^Lair) {
-    x := f32(rl.GetScreenWidth() - 200)
-    y := f32(rl.GetScreenHeight() - 150)
-    rl.DrawText(rl.TextFormat("Walls: %d/%d", lair.placed_counts.Walls, WALL_LIMIT), i32(x), i32(y), 20, rl.DARKGRAY)
-    rl.DrawText(rl.TextFormat("Starts: %d/%d", lair.placed_counts.Starts, START_LIMIT), i32(x), i32(y + 20), 20, rl.DARKGRAY)
-    rl.DrawText(rl.TextFormat("Finishes: %d/%d", lair.placed_counts.Finishes, FINISH_LIMIT), i32(x), i32(y + 40), 20, rl.DARKGRAY)
-    rl.DrawText(rl.TextFormat("Treasures: %d/%d", lair.placed_counts.Treasures, TREASURE_LIMIT), i32(x), i32(y + 60), 20, rl.DARKGRAY)
-    rl.DrawText(rl.TextFormat("Monsters: %d/%d", lair.placed_counts.Monsters, MONSTER_LIMIT), i32(x), i32(y + 80), 20, rl.DARKGRAY)
-    rl.DrawText(rl.TextFormat("Traps: %d/%d", lair.placed_counts.Traps, TRAP_LIMIT), i32(x), i32(y + 100), 20, rl.DARKGRAY)
+	x := f32(rl.GetScreenWidth() - 200)
+	y := f32(rl.GetScreenHeight() - 150)
+	rl.DrawText(
+		rl.TextFormat("Walls: %d/%d", lair.placed_counts.Walls, WALL_LIMIT),
+		i32(x),
+		i32(y),
+		20,
+		rl.DARKGRAY,
+	)
+	rl.DrawText(
+		rl.TextFormat("Starts: %d/%d", lair.placed_counts.Starts, START_LIMIT),
+		i32(x),
+		i32(y + 20),
+		20,
+		rl.DARKGRAY,
+	)
+	rl.DrawText(
+		rl.TextFormat("Finishes: %d/%d", lair.placed_counts.Finishes, FINISH_LIMIT),
+		i32(x),
+		i32(y + 40),
+		20,
+		rl.DARKGRAY,
+	)
+	rl.DrawText(
+		rl.TextFormat("Treasures: %d/%d", lair.placed_counts.Treasures, TREASURE_LIMIT),
+		i32(x),
+		i32(y + 60),
+		20,
+		rl.DARKGRAY,
+	)
+	rl.DrawText(
+		rl.TextFormat("Monsters: %d/%d", lair.placed_counts.Monsters, MONSTER_LIMIT),
+		i32(x),
+		i32(y + 80),
+		20,
+		rl.DARKGRAY,
+	)
+	rl.DrawText(
+		rl.TextFormat("Traps: %d/%d", lair.placed_counts.Traps, TRAP_LIMIT),
+		i32(x),
+		i32(y + 100),
+		20,
+		rl.DARKGRAY,
+	)
+}
+
+can_finish_building :: proc(lair: ^Lair) -> bool {
+	return(
+		lair.placed_counts.Finishes == FINISH_LIMIT &&
+		lair.placed_counts.Monsters == MONSTER_LIMIT &&
+		lair.placed_counts.Starts == START_LIMIT &&
+		lair.placed_counts.Traps == TRAP_LIMIT &&
+		lair.placed_counts.Treasures == TREASURE_LIMIT &&
+		lair.placed_counts.Walls >= (WALL_LIMIT - 3) \
+	)
 }
 
 main :: proc() {
@@ -542,16 +594,15 @@ main :: proc() {
 					new_cell, side := find_closest_cells(world_pos, 2.0)
 					if new_cell.x != -1 || new_cell.y != -1 || side != nil {
 						place_wall(&lair, new_cell, side)
-						fmt.println(lair.placed_counts.Walls)
 					}
 				}
 			} else {
 				cell_pos := get_cell_at_pos(world_pos)
-				if cell_pos.x != -1 || cell_pos.y != -1 {
+				if !is_out_of_bounds({x = cell_pos.x, y = cell_pos.y}) {
 					cell := &lair.grid[cell_pos.y][cell_pos.x]
 					cell_type := get_cell_type_from_place_state(place_mode)
 
-					if cell.type != cell_type && !type_at_limit(&lair, cell_type) {
+					if cell.type == .None && !type_at_limit(&lair, cell_type) {
 						cell.type = cell_type
 						add_type_count(&lair, cell_type)
 					}
@@ -564,11 +615,10 @@ main :: proc() {
 				new_cell, side := find_closest_cells(world_pos, 2.0)
 				if new_cell.x != -1 || new_cell.y != -1 || side != nil {
 					remove_wall(&lair, new_cell, side)
-					fmt.println(lair.placed_counts.Walls)
 				}
 			} else {
 				cell_pos := get_cell_at_pos(world_pos)
-				if cell_pos.x != -1 || cell_pos.y != -1 {
+				if !is_out_of_bounds({x = cell_pos.x, y = cell_pos.y}) {
 					cell := &lair.grid[cell_pos.y][cell_pos.x]
 					cell_type := get_cell_type_from_place_state(place_mode)
 					if cell.type == cell_type {
@@ -594,14 +644,30 @@ main :: proc() {
 		}
 		active_place_mode = i32(place_mode)
 
-
-		rl.GuiToggleGroup(
-			rl.Rectangle{x = 10, y = 10, height = 30, width = 120},
-			"Walls\nStart\nFinish\nTreasure\nMonster\nTrap",
-			&active_place_mode,
-		)
+		if game_state == .Building {
+			rl.GuiToggleGroup(
+				rl.Rectangle{x = 10, y = 10, height = 30, width = 120},
+				"Walls\nStart\nFinish\nTreasure\nMonster\nTrap",
+				&active_place_mode,
+			)
+		}
 
 		place_mode = Placing_State(active_place_mode)
+
+		if can_finish_building(&lair) && game_state == .Building {
+			gui_button_width: i32 = 300
+			if rl.GuiButton(
+				rl.Rectangle {
+					x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
+					y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10),
+					width = f32(gui_button_width),
+					height = 30,
+				},
+				"Finish Building",
+			) {
+				game_state = .Moving
+			}
+		}
 	}
 }
 
