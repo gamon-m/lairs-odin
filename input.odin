@@ -69,7 +69,17 @@ handle_building_input :: proc(lair: ^Lair, world_pos: rl.Vector2, place_mode: ^P
 
 }
 
-handle_playing_input :: proc(lair: ^Lair, player: ^Player) {
-
+get_move_direction :: proc() -> rl.Vector2 {
+	if rl.IsKeyPressed(rl.KeyboardKey.W) || rl.IsKeyPressed(rl.KeyboardKey.UP) {
+		return {0, -1}
+	} else if rl.IsKeyPressed(rl.KeyboardKey.S) || rl.IsKeyPressed(rl.KeyboardKey.DOWN) {
+		return {0, 1}
+	} else if rl.IsKeyPressed(rl.KeyboardKey.D) || rl.IsKeyPressed(rl.KeyboardKey.RIGHT) {
+		return {1, 0}
+	} else if rl.IsKeyPressed(rl.KeyboardKey.A) || rl.IsKeyPressed(rl.KeyboardKey.LEFT) {
+		return {-1, 0}
+	} else {
+		return {0, 0}
+	}
 }
 

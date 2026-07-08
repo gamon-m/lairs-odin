@@ -345,12 +345,52 @@ can_finish_building :: proc(lair: ^Lair) -> bool {
 	)
 }
 
+is_move_legal :: proc(lair: ^Lair, pos: Position, dir: rl.Vector2) -> bool {
+	pos_vector := rl.Vector2{f32(pos.x), f32(pos.y)}
+	new_pos_vector := pos_vector + dir
+	new_pos: Position = {int(new_pos_vector.x), int(new_pos_vector.y)}
+	if is_out_of_bounds(new_pos) {
+		return false
+	}
+
+	wall_in_way: bool = false
+	cell := lair.grid[pos.y][pos.x]
+
+	switch dir {
+	case {0, 1}:
+		wall_in_way = has_wall(cell, .South)
+	case {0, -1}:
+		wall_in_way = has_wall(cell, .North)
+	case {1, 0}:
+		wall_in_way = has_wall(cell, .East)
+	case {-1, 0}:
+		wall_in_way = has_wall(cell, .West)
+	}
+
+	return !wall_in_way
+}
+
+move_player :: proc(player: ^Player, dir: rl.Vector2) {
+	current_position := player.position
+	position_vector := rl.Vector2{f32(current_position.x), f32(current_position.y)}
+
+	new_position_vector := position_vector + dir
+	new_position: Position = {
+		x = int(new_position_vector.x),
+		y = int(new_position_vector.y),
+	}
+
+	player.position = new_position
+}
+
+
 main :: proc() {
 	lair: Lair
 	init_lair(&lair)
 
 	player: Player
-	init_player(&player, {-1, -1})
+	init_player(&player, {0, 0})
+	game_state = .Playing
 
 	screen_width :: 1280
 	screen_height :: 720
@@ -379,6 +419,8 @@ main :: proc() {
 
 	mouse_pos: rl.Vector2
 	world_pos: rl.Vector2
+
+	place_wall(&lair, {1, 1}, .East)
 
 	fmt.println(player)
 
@@ -410,33 +452,24 @@ main :: proc() {
 		if game_state == .Building {
 			draw_debug(&lair)
 			handle_building_input(&lair, world_pos, &place_mode)
-			active_place_mode = i32(place_mode)
 
-			rl.GuiToggleGroup(
-				rl.Rectangle{x = 10, y = 10, height = 30, width = 120},
-				"Walls\nStart\nFinish\nTreasure\nMonster\nTrap",
-				&active_place_mode,
-			)
+			active_place_mode = i32(place_mode)
+			draw_place_modes_toggles(&active_place_mode)
 
 			place_mode = Placing_State(active_place_mode)
 
 			if can_finish_building(&lair) {
-				gui_button_width: i32 = 300
-				if rl.GuiButton(
-					rl.Rectangle {
-						x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
-						y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10),
-						width = f32(gui_button_width),
-						height = 30,
-					},
-					"Finish Building",
-				) {
+				if draw_finish_building_button() {
 					game_state = .Playing
 					init_player(&player, lair.start_pos)
 				}
 			}
 		} else if game_state == .Playing {
-
+			current_position := player.position
+			move_direction: rl.Vector2 = get_move_direction()
+			if is_move_legal(&lair, current_position, move_direction) {
+				move_player(&player, move_direction)
+			}
 		}
 	}
 }

@@ -230,3 +230,24 @@ draw_debug :: proc(lair: ^Lair) {
 	)
 }
 
+draw_finish_building_button :: proc() -> bool {
+	gui_button_width: i32 = 300
+	return rl.GuiButton(
+		rl.Rectangle {
+			x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
+			y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10),
+			width = f32(gui_button_width),
+			height = 30,
+		},
+		"Finish Building",
+	)
+}
+
+draw_place_modes_toggles :: proc(active_place_mode: ^i32) {
+	rl.GuiToggleGroup(
+		rl.Rectangle{x = 10, y = 10, height = 30, width = 120},
+		"Walls\nStart\nFinish\nTreasure\nMonster\nTrap",
+		active_place_mode,
+	)
+}
+
