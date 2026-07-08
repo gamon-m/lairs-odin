@@ -17,7 +17,7 @@ FINISH_LIMIT: int : 1
 
 Game_States :: enum u8 {
 	Building,
-	Moving,
+	Playing,
 }
 
 Wall_Side :: enum u8 {
@@ -70,20 +70,15 @@ Position :: struct {
 Lair :: struct {
 	grid:          [GRID_SIZE][GRID_SIZE]Space,
 	placed_counts: Placed_Counts,
+	start_pos:     Position,
+}
+
+Player :: struct {
+	position:       Position,
+	visited_spaces: []Space,
 }
 
 game_state: Game_States = .Building
-
-get_sprite :: proc(index, columns, sprite_size: i32) -> rl.Rectangle {
-	x := (index % columns) * sprite_size
-	y := (index / columns) * sprite_size
-	return rl.Rectangle {
-		x = f32(x),
-		y = f32(y),
-		height = f32(sprite_size),
-		width = f32(sprite_size),
-	}
-}
 
 init_lair :: proc(lair: ^Lair) {
 	for y in 0 ..< GRID_SIZE {
@@ -93,6 +88,14 @@ init_lair :: proc(lair: ^Lair) {
 			cell.type = .None
 		}
 	}
+	lair.start_pos = {
+		x = -1,
+		y = -1,
+	}
+}
+
+init_player :: proc(player: ^Player, pos: Position) {
+	player.position = pos
 }
 
 is_out_of_bounds :: proc(pos: Position) -> bool {
@@ -196,149 +199,6 @@ set_opposite_wall :: proc(lair: ^Lair, pos: Position, side: Wall_Side) {
 
 has_wall :: proc(space: Space, side: Wall_Side) -> bool {
 	return side in space.walls
-}
-
-draw_walls :: proc(cell: Space, x: f32, y: f32, size: f32) {
-	if has_wall(cell, Wall_Side.North) {
-		rl.DrawRectangleRec(
-			rl.Rectangle{x = x, y = y - INSET / 2, width = size, height = INSET / 2},
-			rl.BLACK,
-		)
-	}
-	if has_wall(cell, Wall_Side.South) {
-		rl.DrawRectangleRec(
-			rl.Rectangle{x = x, y = y + size, width = size, height = INSET / 2},
-			rl.BLACK,
-		)
-	}
-	if has_wall(cell, Wall_Side.East) {
-		rl.DrawRectangleRec(
-			rl.Rectangle{x = x + size, y = y, width = INSET / 2, height = size},
-			rl.BLACK,
-		)
-	}
-	if has_wall(cell, Wall_Side.West) {
-		rl.DrawRectangleRec(
-			rl.Rectangle{x = x - INSET / 2, y = y, width = INSET / 2, height = size},
-			rl.BLACK,
-		)
-	}
-}
-
-draw_corners :: proc(cell: Space, x: int, y: int, size: f32) {
-	cell_start_x := f32(x) * CELL_SIZE + INSET
-	cell_start_y := f32(y) * CELL_SIZE + INSET
-	px := f32(x) * CELL_SIZE + (INSET / 2)
-	py := f32(y) * CELL_SIZE + (INSET / 2)
-
-	if (y != 0) {
-		if (x != 0) {
-			// top left
-			rl.DrawRectangleRec(
-				rl.Rectangle{x = px, y = py, width = INSET / 2, height = INSET / 2},
-				rl.BLACK,
-			)
-		}
-		if (x != GRID_SIZE - 1) {
-			// top right
-			rl.DrawRectangleRec(
-				rl.Rectangle {
-					x = cell_start_x + size,
-					y = py,
-					width = INSET / 2,
-					height = INSET / 2,
-				},
-				rl.BLACK,
-			)
-		}
-	}
-	if (y != GRID_SIZE - 1) {
-		if (x != 0) {
-			// bottom left
-			rl.DrawRectangleRec(
-				rl.Rectangle {
-					x = px,
-					y = cell_start_y + size,
-					width = INSET / 2,
-					height = INSET / 2,
-				},
-				rl.BLACK,
-			)
-		}
-		if (x != GRID_SIZE - 1) {
-			// bottom right
-			rl.DrawRectangleRec(
-				rl.Rectangle {
-					x = cell_start_x + size,
-					y = cell_start_y + size,
-					width = INSET / 2,
-					height = INSET / 2,
-				},
-				rl.BLACK,
-			)
-		}
-	}
-}
-
-draw_border :: proc() {
-	rl.DrawRectangleLinesEx(
-		rl.Rectangle {
-			x = 0,
-			y = 0,
-			height = CELL_SIZE * f32(GRID_SIZE) + INSET,
-			width = CELL_SIZE * f32(GRID_SIZE) + INSET,
-		},
-		INSET,
-		rl.BLACK,
-	)
-}
-
-draw_cell_type :: proc(cell: Space, pos_x, pos_y: f32, sheet: rl.Texture) {
-	columns: i32 = 3
-	sprite_size: i32 = 16
-	source: rl.Rectangle
-
-	if cell.type != .None {
-		source = get_sprite(i32(cell.type), columns, sprite_size)
-		rl.DrawTexturePro(
-			sheet,
-			source,
-			rl.Rectangle {
-				x = pos_x,
-				y = pos_y,
-				width = f32(sprite_size),
-				height = f32(sprite_size),
-			},
-			{1, 1},
-			0,
-			rl.WHITE,
-		)
-	}
-}
-
-draw_grid :: proc(lair: ^Lair, sheet: rl.Texture) {
-	line_thickness: f32 : 1
-
-	for y in 0 ..< GRID_SIZE {
-		for x in 0 ..< GRID_SIZE {
-			cell := lair.grid[y][x]
-
-			pos_x: f32 = f32(x) * CELL_SIZE + INSET
-			pos_y: f32 = f32(y) * CELL_SIZE + INSET
-			size: f32 = f32(CELL_SIZE - INSET)
-
-			rl.DrawRectangleLinesEx(
-				rl.Rectangle{height = size, width = size, x = pos_x, y = pos_y},
-				line_thickness,
-				rl.BEIGE,
-			)
-
-			draw_cell_type(cell, pos_x, pos_y, sheet)
-			draw_walls(cell, pos_x, pos_y, size)
-			draw_corners(cell, x, y, size)
-			draw_border()
-		}
-	}
 }
 
 get_cell_at_pos :: proc(pos: rl.Vector2) -> Position {
@@ -473,54 +333,8 @@ type_at_limit :: proc(lair: ^Lair, type: Cell_Type) -> bool {
 	return false
 }
 
-draw_debug :: proc(lair: ^Lair) {
-	x := f32(rl.GetScreenWidth() - 200)
-	y := f32(rl.GetScreenHeight() - 150)
-	rl.DrawText(
-		rl.TextFormat("Walls: %d/%d", lair.placed_counts.Walls, WALL_LIMIT),
-		i32(x),
-		i32(y),
-		20,
-		rl.DARKGRAY,
-	)
-	rl.DrawText(
-		rl.TextFormat("Starts: %d/%d", lair.placed_counts.Starts, START_LIMIT),
-		i32(x),
-		i32(y + 20),
-		20,
-		rl.DARKGRAY,
-	)
-	rl.DrawText(
-		rl.TextFormat("Finishes: %d/%d", lair.placed_counts.Finishes, FINISH_LIMIT),
-		i32(x),
-		i32(y + 40),
-		20,
-		rl.DARKGRAY,
-	)
-	rl.DrawText(
-		rl.TextFormat("Treasures: %d/%d", lair.placed_counts.Treasures, TREASURE_LIMIT),
-		i32(x),
-		i32(y + 60),
-		20,
-		rl.DARKGRAY,
-	)
-	rl.DrawText(
-		rl.TextFormat("Monsters: %d/%d", lair.placed_counts.Monsters, MONSTER_LIMIT),
-		i32(x),
-		i32(y + 80),
-		20,
-		rl.DARKGRAY,
-	)
-	rl.DrawText(
-		rl.TextFormat("Traps: %d/%d", lair.placed_counts.Traps, TRAP_LIMIT),
-		i32(x),
-		i32(y + 100),
-		20,
-		rl.DARKGRAY,
-	)
-}
-
 can_finish_building :: proc(lair: ^Lair) -> bool {
+
 	return(
 		lair.placed_counts.Finishes == FINISH_LIMIT &&
 		lair.placed_counts.Monsters == MONSTER_LIMIT &&
@@ -534,6 +348,9 @@ can_finish_building :: proc(lair: ^Lair) -> bool {
 main :: proc() {
 	lair: Lair
 	init_lair(&lair)
+
+	player: Player
+	init_player(&player, {-1, -1})
 
 	screen_width :: 1280
 	screen_height :: 720
@@ -563,6 +380,7 @@ main :: proc() {
 	mouse_pos: rl.Vector2
 	world_pos: rl.Vector2
 
+	fmt.println(player)
 
 	for !rl.WindowShouldClose() {
 		if rl.IsWindowResized() {
@@ -584,89 +402,41 @@ main :: proc() {
 
 		rl.BeginMode2D(camera)
 		draw_grid(&lair, dungeon_icons)
+		if game_state != .Building {
+			draw_player(&player, dungeon_icons)
+		}
 		rl.EndMode2D()
 
-		draw_debug(&lair)
-
-		if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
-			if place_mode == .Walls {
-				if lair.placed_counts.Walls < WALL_LIMIT {
-					new_cell, side := find_closest_cells(world_pos, 2.0)
-					if new_cell.x != -1 || new_cell.y != -1 || side != nil {
-						place_wall(&lair, new_cell, side)
-					}
-				}
-			} else {
-				cell_pos := get_cell_at_pos(world_pos)
-				if !is_out_of_bounds({x = cell_pos.x, y = cell_pos.y}) {
-					cell := &lair.grid[cell_pos.y][cell_pos.x]
-					cell_type := get_cell_type_from_place_state(place_mode)
-
-					if cell.type == .None && !type_at_limit(&lair, cell_type) {
-						cell.type = cell_type
-						add_type_count(&lair, cell_type)
-					}
-
-				}
-			}
-		}
-		if rl.IsMouseButtonPressed(rl.MouseButton.RIGHT) {
-			if place_mode == .Walls {
-				new_cell, side := find_closest_cells(world_pos, 2.0)
-				if new_cell.x != -1 || new_cell.y != -1 || side != nil {
-					remove_wall(&lair, new_cell, side)
-				}
-			} else {
-				cell_pos := get_cell_at_pos(world_pos)
-				if !is_out_of_bounds({x = cell_pos.x, y = cell_pos.y}) {
-					cell := &lair.grid[cell_pos.y][cell_pos.x]
-					cell_type := get_cell_type_from_place_state(place_mode)
-					if cell.type == cell_type {
-						cell.type = .None
-						subtract_type_count(&lair, cell_type)
-					}
-				}
-			}
-		}
-
-		if rl.IsKeyPressed(rl.KeyboardKey.ONE) {
-			place_mode = .Walls
-		} else if rl.IsKeyPressed(rl.KeyboardKey.TWO) {
-			place_mode = .Start
-		} else if rl.IsKeyPressed(rl.KeyboardKey.THREE) {
-			place_mode = .Finish
-		} else if rl.IsKeyPressed(rl.KeyboardKey.FOUR) {
-			place_mode = .Treasure
-		} else if rl.IsKeyPressed(rl.KeyboardKey.FIVE) {
-			place_mode = .Monster
-		} else if rl.IsKeyPressed(rl.KeyboardKey.SIX) {
-			place_mode = .Trap
-		}
-		active_place_mode = i32(place_mode)
-
 		if game_state == .Building {
+			draw_debug(&lair)
+			handle_building_input(&lair, world_pos, &place_mode)
+			active_place_mode = i32(place_mode)
+
 			rl.GuiToggleGroup(
 				rl.Rectangle{x = 10, y = 10, height = 30, width = 120},
 				"Walls\nStart\nFinish\nTreasure\nMonster\nTrap",
 				&active_place_mode,
 			)
-		}
 
-		place_mode = Placing_State(active_place_mode)
+			place_mode = Placing_State(active_place_mode)
 
-		if can_finish_building(&lair) && game_state == .Building {
-			gui_button_width: i32 = 300
-			if rl.GuiButton(
-				rl.Rectangle {
-					x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
-					y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10),
-					width = f32(gui_button_width),
-					height = 30,
-				},
-				"Finish Building",
-			) {
-				game_state = .Moving
+			if can_finish_building(&lair) {
+				gui_button_width: i32 = 300
+				if rl.GuiButton(
+					rl.Rectangle {
+						x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
+						y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10),
+						width = f32(gui_button_width),
+						height = 30,
+					},
+					"Finish Building",
+				) {
+					game_state = .Playing
+					init_player(&player, lair.start_pos)
+				}
 			}
+		} else if game_state == .Playing {
+
 		}
 	}
 }
