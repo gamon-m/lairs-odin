@@ -1,5 +1,6 @@
 package main
 
+import "core:fmt"
 import rl "vendor:raylib"
 
 get_sprite :: proc(index, columns, sprite_size: i32) -> rl.Rectangle {
@@ -230,6 +231,32 @@ draw_debug :: proc(lair: ^Lair) {
 	)
 }
 
+draw_collected_debug :: proc(player: ^Player) {
+	x := f32(rl.GetScreenWidth() - 200)
+	y := f32(rl.GetScreenHeight() - 100)
+	rl.DrawText(
+		rl.TextFormat("Treasures: %d", player.collected.Treasures),
+		i32(x),
+		i32(y),
+		20,
+		rl.DARKGRAY,
+	)
+	rl.DrawText(
+		rl.TextFormat("Monsters: %d", player.collected.Monsters),
+		i32(x),
+		i32(y + 20),
+		20,
+		rl.DARKGRAY,
+	)
+	rl.DrawText(
+		rl.TextFormat("Traps: %d", player.collected.Traps),
+		i32(x),
+		i32(y + 40),
+		20,
+		rl.DARKGRAY,
+	)
+}
+
 draw_finish_building_button :: proc() -> bool {
 	gui_button_width: i32 = 300
 	return rl.GuiButton(
@@ -249,5 +276,12 @@ draw_place_modes_toggles :: proc(active_place_mode: ^i32) {
 		"Walls\nStart\nFinish\nTreasure\nMonster\nTrap",
 		active_place_mode,
 	)
+}
+
+draw_win_screen :: proc() {
+	x := rl.GetScreenWidth() / 2 - 50
+	y := rl.GetScreenHeight() / 6
+
+	rl.DrawText("You Win!", x, y, 32, rl.BLACK)
 }
 

@@ -53,6 +53,12 @@ Placed_Counts :: struct {
 	Finishes:  int,
 }
 
+Collected_Counts :: struct {
+	Monsters:  int,
+	Treasures: int,
+	Traps:     int,
+}
+
 Placing_State :: enum u8 {
 	Walls,
 	Start,
@@ -71,11 +77,13 @@ Lair :: struct {
 	grid:          [GRID_SIZE][GRID_SIZE]Space,
 	placed_counts: Placed_Counts,
 	start_pos:     Position,
+	finish_pos:    Position,
 }
 
 Player :: struct {
 	position:       Position,
 	visited_spaces: []Space,
+	collected:      Collected_Counts,
 }
 
 game_state: Game_States = .Building
@@ -96,6 +104,7 @@ init_lair :: proc(lair: ^Lair) {
 
 init_player :: proc(player: ^Player, pos: Position) {
 	player.position = pos
+	player.collected = {}
 }
 
 is_out_of_bounds :: proc(pos: Position) -> bool {
@@ -383,20 +392,76 @@ move_player :: proc(player: ^Player, dir: rl.Vector2) {
 	player.position = new_position
 }
 
+test_board :: proc(lair: ^Lair, player: ^Player) {
+	game_state = .Playing
+
+	place_wall(lair, {0, 0}, .East)
+	place_wall(lair, {0, 1}, .East)
+	place_wall(lair, {0, 2}, .East)
+	place_wall(lair, {0, 3}, .East)
+	place_wall(lair, {0, 4}, .East)
+	place_wall(lair, {2, 0}, .East)
+	place_wall(lair, {1, 1}, .East)
+	place_wall(lair, {4, 1}, .East)
+	place_wall(lair, {1, 1}, .South)
+	place_wall(lair, {2, 1}, .South)
+	place_wall(lair, {3, 1}, .South)
+	place_wall(lair, {5, 1}, .South)
+	place_wall(lair, {2, 2}, .South)
+	place_wall(lair, {3, 2}, .South)
+	place_wall(lair, {4, 2}, .South)
+	place_wall(lair, {5, 2}, .South)
+	place_wall(lair, {1, 3}, .South)
+	place_wall(lair, {2, 3}, .South)
+	place_wall(lair, {4, 3}, .South)
+	place_wall(lair, {5, 3}, .South)
+
+	lair.grid[0][0].type = .Monster
+	lair.grid[1][1].type = .Monster
+	lair.grid[0][4].type = .Monster
+	lair.grid[1][2].type = .Finish
+	lair.grid[1][5].type = .Treasure
+	lair.grid[3][0].type = .Treasure
+	lair.grid[3][4].type = .Treasure
+	lair.grid[4][0].type = .Trap
+	lair.grid[4][3].type = .Trap
+	lair.grid[5][2].type = .Trap
+	lair.grid[4][1].type = .Start
+
+	lair.start_pos = {1, 4}
+	lair.finish_pos = {2, 1}
+	player.position = lair.start_pos
+}
+
+is_win :: proc(lair: ^Lair, player: ^Player) -> bool {
+	win_condition: bool = false
+	if player.collected.Monsters == 3 ||
+	   player.collected.Treasures == 3 ||
+	   (player.collected.Monsters == 2 && player.collected.Treasures == 2) {
+		win_condition = true
+	}
+
+	if win_condition && player.position == lair.finish_pos {
+		return true
+	} else {
+		return false
+	}
+}
 
 main :: proc() {
 	lair: Lair
 	init_lair(&lair)
 
 	player: Player
-	init_player(&player, {0, 0})
-	game_state = .Playing
+	init_player(&player, {-1, -1})
 
 	screen_width :: 1280
 	screen_height :: 720
 
 	place_mode := Placing_State.Walls
 	active_place_mode := i32(place_mode)
+
+	test_board(&lair, &player)
 
 	rl.SetConfigFlags(rl.ConfigFlags{.WINDOW_RESIZABLE})
 
@@ -419,10 +484,6 @@ main :: proc() {
 
 	mouse_pos: rl.Vector2
 	world_pos: rl.Vector2
-
-	place_wall(&lair, {1, 1}, .East)
-
-	fmt.println(player)
 
 	for !rl.WindowShouldClose() {
 		if rl.IsWindowResized() {
@@ -461,14 +522,30 @@ main :: proc() {
 			if can_finish_building(&lair) {
 				if draw_finish_building_button() {
 					game_state = .Playing
-					init_player(&player, lair.start_pos)
+					player.position = lair.start_pos
 				}
 			}
 		} else if game_state == .Playing {
+			draw_collected_debug(&player)
 			current_position := player.position
 			move_direction: rl.Vector2 = get_move_direction()
 			if is_move_legal(&lair, current_position, move_direction) {
 				move_player(&player, move_direction)
+				cell := &lair.grid[player.position.y][player.position.x]
+				#partial switch cell.type {
+				case .Treasure:
+					player.collected.Treasures += 1
+					cell.type = .None
+				case .Monster:
+					player.collected.Monsters += 1
+					cell.type = .None
+				case .Trap:
+					player.collected.Traps += 1
+					cell.type = .None
+				}
+			}
+			if is_win(&lair, &player) {
+				draw_win_screen()
 			}
 		}
 	}

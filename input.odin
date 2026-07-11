@@ -21,6 +21,8 @@ handle_building_input :: proc(lair: ^Lair, world_pos: rl.Vector2, place_mode: ^P
 					cell.type = cell_type
 					if cell_type == .Start {
 						lair.start_pos = cell_pos
+					} else if cell_type == .Finish {
+						lair.finish_pos = cell_pos
 					}
 					add_type_count(lair, cell_type)
 				}
