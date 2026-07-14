@@ -7,6 +7,7 @@ import rl "vendor:raylib"
 GRID_SIZE: int : 6
 CELL_SIZE: f32 : 16
 INSET: f32 : 2
+SIZE: f32 : CELL_SIZE - INSET
 
 WALL_LIMIT: int : 20
 MONSTER_LIMIT: int : 3
@@ -68,6 +69,32 @@ Placing_State :: enum u8 {
 	Trap,
 }
 
+Cube_Type :: enum u8 {
+	Normal,
+	Energy,
+	Vision,
+}
+
+Cube_Stage :: enum u8 {
+	Conserved,
+	Fresh,
+	Spent,
+	Fatigued,
+}
+
+Cube :: struct {
+	type:  Cube_Type,
+	stage: Cube_Stage,
+}
+
+Move_Type :: enum i32 {
+	Creep,
+	Hustle,
+	Backtrack,
+	Peer,
+	Conserve,
+}
+
 Position :: struct {
 	x: int,
 	y: int,
@@ -81,9 +108,9 @@ Lair :: struct {
 }
 
 Player :: struct {
-	position:       Position,
-	visited_spaces: []Space,
-	collected:      Collected_Counts,
+	position:  Position,
+	collected: Collected_Counts,
+	cubes:     [6]Cube,
 }
 
 game_state: Game_States = .Building
@@ -105,6 +132,14 @@ init_lair :: proc(lair: ^Lair) {
 init_player :: proc(player: ^Player, pos: Position) {
 	player.position = pos
 	player.collected = {}
+	player.cubes = {
+		{stage = .Fresh, type = .Normal},
+		{stage = .Fresh, type = .Normal},
+		{stage = .Fresh, type = .Normal},
+		{stage = .Fresh, type = .Normal},
+		{stage = .Fresh, type = .Energy},
+		{stage = .Fresh, type = .Vision},
+	}
 }
 
 is_out_of_bounds :: proc(pos: Position) -> bool {
@@ -374,6 +409,8 @@ is_move_legal :: proc(lair: ^Lair, pos: Position, dir: rl.Vector2) -> bool {
 		wall_in_way = has_wall(cell, .East)
 	case {-1, 0}:
 		wall_in_way = has_wall(cell, .West)
+	case:
+		return false
 	}
 
 	return !wall_in_way
@@ -429,6 +466,7 @@ test_board :: proc(lair: ^Lair, player: ^Player) {
 	lair.grid[4][1].type = .Start
 
 	lair.start_pos = {1, 4}
+	lair.grid[4][1].hidden = false
 	lair.finish_pos = {2, 1}
 	player.position = lair.start_pos
 }
@@ -448,6 +486,39 @@ is_win :: proc(lair: ^Lair, player: ^Player) -> bool {
 	}
 }
 
+cell_position_at_mouse :: proc(world_pos: rl.Vector2) -> Position {
+	local_x := math.mod(world_pos.x, CELL_SIZE)
+	local_y := math.mod(world_pos.y, CELL_SIZE)
+
+	inside_cell :=
+		local_x >= INSET &&
+		local_x < CELL_SIZE - INSET &&
+		local_y >= INSET &&
+		local_y < CELL_SIZE - INSET
+
+	if !inside_cell {
+		return {-1, -1}
+	}
+
+	pos_x := int(world_pos.x / CELL_SIZE)
+	pos_y := int(world_pos.y / CELL_SIZE)
+
+	pos: Position = {pos_x, pos_y}
+
+	if is_out_of_bounds(pos) {
+		return {-1, -1}
+	}
+
+	return pos
+}
+
+get_direction_from_player :: proc(player: ^Player, position: Position) -> rl.Vector2 {
+	player_pos := rl.Vector2{f32(player.position.x), f32(player.position.y)}
+	current_pos := rl.Vector2{f32(position.x), f32(position.y)}
+
+	return player_pos - current_pos
+}
+
 main :: proc() {
 	lair: Lair
 	init_lair(&lair)
@@ -460,6 +531,9 @@ main :: proc() {
 
 	place_mode := Placing_State.Walls
 	active_place_mode := i32(place_mode)
+
+	move_mode := Move_Type.Creep
+	active_move_mode := i32(move_mode)
 
 	test_board(&lair, &player)
 
@@ -497,6 +571,7 @@ main :: proc() {
 
 		mouse_pos = rl.GetMousePosition()
 		world_pos = rl.GetScreenToWorld2D(mouse_pos, camera)
+		hovered_pos := cell_position_at_mouse(world_pos)
 
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
@@ -507,6 +582,7 @@ main :: proc() {
 		draw_grid(&lair, dungeon_icons)
 		if game_state != .Building {
 			draw_player(&player, dungeon_icons)
+			draw_legal_moves(&player, &lair, hovered_pos)
 		}
 		rl.EndMode2D()
 
@@ -527,23 +603,12 @@ main :: proc() {
 			}
 		} else if game_state == .Playing {
 			draw_collected_debug(&player)
-			current_position := player.position
-			move_direction: rl.Vector2 = get_move_direction()
-			if is_move_legal(&lair, current_position, move_direction) {
-				move_player(&player, move_direction)
-				cell := &lair.grid[player.position.y][player.position.x]
-				#partial switch cell.type {
-				case .Treasure:
-					player.collected.Treasures += 1
-					cell.type = .None
-				case .Monster:
-					player.collected.Monsters += 1
-					cell.type = .None
-				case .Trap:
-					player.collected.Traps += 1
-					cell.type = .None
-				}
-			}
+			draw_move_type_toggles(&active_move_mode)
+			draw_cube_inventory(player.cubes)
+			move_mode = Move_Type(active_move_mode)
+
+			handle_moving_input(&lair, &player, hovered_pos)
+
 			if is_win(&lair, &player) {
 				draw_win_screen()
 			}

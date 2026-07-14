@@ -21,6 +21,7 @@ handle_building_input :: proc(lair: ^Lair, world_pos: rl.Vector2, place_mode: ^P
 					cell.type = cell_type
 					if cell_type == .Start {
 						lair.start_pos = cell_pos
+						lair.grid[cell_pos.y][cell_pos.x].hidden = false
 					} else if cell_type == .Finish {
 						lair.finish_pos = cell_pos
 					}
@@ -82,6 +83,23 @@ get_move_direction :: proc() -> rl.Vector2 {
 		return {-1, 0}
 	} else {
 		return {0, 0}
+	}
+}
+
+handle_moving_input :: proc(lair: ^Lair, player: ^Player, position: Position) {
+	if is_out_of_bounds(position) {
+		return
+	}
+
+	direction := get_direction_from_player(player, position)
+
+	if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
+		if !is_move_legal(lair, position, direction) {
+			return
+		}
+
+		player.position = position
+		lair.grid[position.y][position.x].hidden = false
 	}
 }
 

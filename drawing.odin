@@ -14,31 +14,55 @@ get_sprite :: proc(index, columns, sprite_size: i32) -> rl.Rectangle {
 	}
 }
 
-draw_walls :: proc(cell: Space, x: f32, y: f32, size: f32) {
+draw_walls :: proc(cell: Space, grid_x, grid_y: int, px: f32, py: f32) {
 	if has_wall(cell, Wall_Side.North) {
-		rl.DrawRectangleRec(
-			rl.Rectangle{x = x, y = y - INSET / 2, width = size, height = INSET / 2},
-			rl.BLACK,
-		)
+		draw_north_wall(px, py)
+		new_cell := get_adjacent_cell({x = grid_x, y = grid_y}, .North)
+		draw_south_wall(f32(new_cell.x) * CELL_SIZE + INSET, f32(new_cell.y) * CELL_SIZE + INSET)
 	}
 	if has_wall(cell, Wall_Side.South) {
-		rl.DrawRectangleRec(
-			rl.Rectangle{x = x, y = y + size, width = size, height = INSET / 2},
-			rl.BLACK,
-		)
+		draw_south_wall(px, py)
+		new_cell := get_adjacent_cell({x = grid_x, y = grid_y}, .South)
+		draw_north_wall(f32(new_cell.x) * CELL_SIZE + INSET, f32(new_cell.y) * CELL_SIZE + INSET)
 	}
 	if has_wall(cell, Wall_Side.East) {
-		rl.DrawRectangleRec(
-			rl.Rectangle{x = x + size, y = y, width = INSET / 2, height = size},
-			rl.BLACK,
-		)
+		draw_east_wall(px, py)
+		new_cell := get_adjacent_cell({x = grid_x, y = grid_y}, .East)
+		draw_west_wall(f32(new_cell.x) * CELL_SIZE + INSET, f32(new_cell.y) * CELL_SIZE + INSET)
 	}
 	if has_wall(cell, Wall_Side.West) {
-		rl.DrawRectangleRec(
-			rl.Rectangle{x = x - INSET / 2, y = y, width = INSET / 2, height = size},
-			rl.BLACK,
-		)
+		draw_west_wall(px, py)
+		new_cell := get_adjacent_cell({x = grid_x, y = grid_y}, .West)
+		draw_east_wall(f32(new_cell.x) * CELL_SIZE + INSET, f32(new_cell.y) * CELL_SIZE + INSET)
 	}
+}
+
+draw_north_wall :: proc(x, y: f32) {
+	rl.DrawRectangleRec(
+		rl.Rectangle{x = x, y = y - INSET / 2, width = SIZE, height = INSET / 2},
+		rl.BLACK,
+	)
+}
+
+draw_south_wall :: proc(x, y: f32) {
+	rl.DrawRectangleRec(
+		rl.Rectangle{x = x, y = y + SIZE, width = SIZE, height = INSET / 2},
+		rl.BLACK,
+	)
+}
+
+draw_east_wall :: proc(x, y: f32) {
+	rl.DrawRectangleRec(
+		rl.Rectangle{x = x + SIZE, y = y, width = INSET / 2, height = SIZE},
+		rl.BLACK,
+	)
+}
+
+draw_west_wall :: proc(x, y: f32) {
+	rl.DrawRectangleRec(
+		rl.Rectangle{x = x - INSET / 2, y = y, width = INSET / 2, height = SIZE},
+		rl.BLACK,
+	)
 }
 
 draw_corners :: proc(cell: Space, x: int, y: int, size: f32) {
@@ -132,6 +156,20 @@ draw_cell_type :: proc(cell: Space, pos_x, pos_y: f32, sheet: rl.Texture) {
 	}
 }
 
+draw_hidden_cell :: proc(pos_x, pos_y: f32, sheet: rl.Texture) {
+	columns: i32 = 3
+	sprite_size: i32 = 16
+	source := get_sprite(6, columns, sprite_size)
+	rl.DrawTexturePro(
+		sheet,
+		source,
+		rl.Rectangle{x = pos_x, y = pos_y, width = f32(sprite_size), height = f32(sprite_size)},
+		{1, 1},
+		0,
+		rl.WHITE,
+	)
+}
+
 draw_grid :: proc(lair: ^Lair, sheet: rl.Texture) {
 	line_thickness: f32 : 1
 
@@ -149,8 +187,16 @@ draw_grid :: proc(lair: ^Lair, sheet: rl.Texture) {
 				rl.BEIGE,
 			)
 
-			draw_cell_type(cell, pos_x, pos_y, sheet)
-			draw_walls(cell, pos_x, pos_y, size)
+			if game_state == .Playing {
+				if !cell.hidden {
+					draw_walls(cell, x, y, pos_x, pos_y)
+					draw_cell_type(cell, pos_x, pos_y, sheet)
+				} else {
+					draw_hidden_cell(pos_x, pos_y, sheet)
+				}
+			} else {
+				draw_cell_type(cell, pos_x, pos_y, sheet)
+			}
 			draw_corners(cell, x, y, size)
 			draw_border()
 
@@ -272,9 +318,17 @@ draw_finish_building_button :: proc() -> bool {
 
 draw_place_modes_toggles :: proc(active_place_mode: ^i32) {
 	rl.GuiToggleGroup(
-		rl.Rectangle{x = 10, y = 10, height = 30, width = 120},
+		rl.Rectangle{x = 10, y = 10, height = 30, width = 150},
 		"Walls\nStart\nFinish\nTreasure\nMonster\nTrap",
 		active_place_mode,
+	)
+}
+
+draw_move_type_toggles :: proc(move_type: ^i32) {
+	rl.GuiToggleGroup(
+		rl.Rectangle{x = 10, y = 10, height = 30, width = 150},
+		"Creep\nHustle\nBacktrack\nPeer\nConserve",
+		move_type,
 	)
 }
 
@@ -283,5 +337,87 @@ draw_win_screen :: proc() {
 	y := rl.GetScreenHeight() / 6
 
 	rl.DrawText("You Win!", x, y, 32, rl.BLACK)
+}
+
+draw_legal_moves :: proc(player: ^Player, lair: ^Lair, hovered_position: Position) {
+	player_position := player.position
+
+	directions := [4]rl.Vector2{{0, -1}, {0, 1}, {1, 0}, {-1, 0}}
+
+	for direction in directions {
+		if is_move_legal(lair, player_position, direction) {
+			new_x := player_position.x + int(direction.x)
+			new_y := player_position.y + int(direction.y)
+
+			pos_x := f32(new_x) * CELL_SIZE + INSET
+			pos_y := f32(new_y) * CELL_SIZE + INSET
+
+			if new_x == hovered_position.x && new_y == hovered_position.y {
+				rl.DrawRectangleRec(
+					rl.Rectangle{x = pos_x, y = pos_y, width = SIZE, height = SIZE},
+					rl.Color{0, 255, 0, 80},
+				)
+			}
+
+			rl.DrawRectangleRec(
+				rl.Rectangle{x = pos_x, y = pos_y, width = SIZE, height = SIZE},
+				rl.Color{0, 255, 0, 40},
+			)
+		}
+	}
+}
+
+draw_cube_inventory :: proc(cubes: [6]Cube) {
+	stage_order := [4]Cube_Stage{.Conserved, .Fresh, .Spent, .Fatigued}
+	type_order := [3]Cube_Type{.Normal, .Energy, .Vision}
+
+	Y_SPACING: i32 = 40
+
+	stages := [Cube_Stage][dynamic]Cube_Type{}
+	for cube in cubes {
+		append(&stages[cube.stage], cube.type)
+	}
+
+	line_count: i32 = len(stage_order)
+	total_height: i32 = line_count * Y_SPACING
+	start_y := rl.GetScreenHeight() - total_height - 20
+
+	for i in 0 ..< line_count {
+		draw_cube_stage(stages[Cube_Stage(i)], i, start_y)
+	}
+
+}
+
+draw_cube_stage :: proc(cubes: [dynamic]Cube_Type, stage: i32, start_y: i32) {
+	Y_SPACING: i32 = 40
+	Y_POS := start_y + stage * Y_SPACING
+	CUBE_Y: f32 = 20 + f32(Y_POS)
+
+
+	stage_title := Cube_Stage(stage)
+	rl.DrawText(rl.TextFormat("%v", stage_title), 20, Y_POS, 20, rl.BLACK)
+	for type, i in cubes {
+		draw_cube(type, i, CUBE_Y)
+	}
+}
+
+draw_cube :: proc(type: Cube_Type, index: int, pos_y: f32) {
+	START_X: f32 = 20
+	SIZE: f32 = 16
+	X_OFFSET: f32 = 4
+
+	POS_X: f32 = START_X + ((SIZE + X_OFFSET) * f32(index))
+
+	colour: rl.Color
+	switch type {
+	case .Normal:
+		colour = rl.GRAY
+	case .Energy:
+		colour = rl.ORANGE
+	case .Vision:
+		colour = rl.GREEN
+	}
+
+	rl.DrawRectangleRec(rl.Rectangle{x = POS_X, y = pos_y, width = SIZE, height = SIZE}, colour)
 }
 
