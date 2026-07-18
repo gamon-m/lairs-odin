@@ -1,0 +1,14 @@
+package main
+
+GRID_SIZE: int : 6
+CELL_SIZE: f32 : 16
+INSET: f32 : 2
+SIZE: f32 : CELL_SIZE - INSET
+
+WALL_LIMIT: int : 20
+MONSTER_LIMIT: int : 3
+TRAP_LIMIT: int : 3
+TREASURE_LIMIT: int : 3
+START_LIMIT: int : 1
+FINISH_LIMIT: int : 1
+

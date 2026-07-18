@@ -1,5 +1,6 @@
 package main
 
+import "core:fmt"
 import rl "vendor:raylib"
 
 handle_building_input :: proc(lair: ^Lair, world_pos: rl.Vector2, place_mode: ^Placing_State) {
@@ -86,20 +87,56 @@ get_move_direction :: proc() -> rl.Vector2 {
 	}
 }
 
-handle_moving_input :: proc(lair: ^Lair, player: ^Player, position: Position) {
+handle_moving_input :: proc(
+	lair: ^Lair,
+	player: ^Player,
+	position: Position,
+	move_mode: Move_Type,
+) {
 	if is_out_of_bounds(position) {
 		return
 	}
 
+	switch move_mode {
+	case .Creep:
+		if !can_afford(player, move_mode) {
+			return
+		}
+		if handle_creep(lair, player, position) {
+			handle_cost(player, move_mode)
+		}
+	case .Hustle:
+		if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
+			fmt.println("Hustle")
+			handle_cost(player, move_mode)
+		}
+	case .Backtrack:
+		if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
+			fmt.println("Backtrack")
+			handle_cost(player, move_mode)
+		}
+	case .Peer:
+		if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
+			fmt.println("Peer")
+			handle_cost(player, move_mode)
+		}
+	case .Conserve:
+
+	}
+}
+
+handle_creep :: proc(lair: ^Lair, player: ^Player, position: Position) -> bool {
 	direction := get_direction_from_player(player, position)
 
 	if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
 		if !is_move_legal(lair, position, direction) {
-			return
+			return false
 		}
 
 		player.position = position
 		lair.grid[position.y][position.x].hidden = false
+		return true
 	}
+	return false
 }
 
