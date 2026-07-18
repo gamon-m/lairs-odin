@@ -338,6 +338,25 @@ draw_turn_count :: proc(player: ^Player) {
 	rl.DrawText(text, i32(x), i32(y), font_size, rl.BLACK)
 }
 
+draw_hustle_count :: proc(player: ^Player) {
+	font_size: i32 = 20
+	text := rl.TextFormat("Hustle moves: %d", player.hustle_remaining)
+	text_width := rl.MeasureText(text, font_size)
+	x := f32(rl.GetScreenWidth() / 2 - text_width / 2)
+	y := f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10 - 70)
+	rl.DrawText(text, i32(x), i32(y), font_size, rl.BLACK)
+}
+
+draw_move_mode_locked :: proc(move_mode: Move_Type) {
+	rl.DrawText(
+		rl.TextFormat("Locked: %v", move_mode),
+		10,
+		10,
+		20,
+		rl.DARKGRAY,
+	)
+}
+
 draw_place_modes_toggles :: proc(active_place_mode: ^i32) {
 	rl.GuiToggleGroup(
 		rl.Rectangle{x = 10, y = 10, height = 30, width = 150},

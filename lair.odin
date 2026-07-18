@@ -66,6 +66,7 @@ place_wall :: proc(lair: ^Lair, pos: Position, side: Wall_Side) {
 init_player :: proc(player: ^Player, pos: Position) {
 	player.position = pos
 	player.collected = {}
+	player.hustle_remaining = 0
 	player.cubes = {
 		{stage = .Fresh, type = .Normal},
 		{stage = .Fresh, type = .Normal},
@@ -74,6 +75,7 @@ init_player :: proc(player: ^Player, pos: Position) {
 		{stage = .Fresh, type = .Energy},
 		{stage = .Fresh, type = .Vision},
 	}
+	player.turn = 1
 }
 
 is_out_of_bounds :: proc(pos: Position) -> bool {

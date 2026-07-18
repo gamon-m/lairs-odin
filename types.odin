@@ -92,9 +92,10 @@ Lair :: struct {
 }
 
 Player :: struct {
-	position:  Position,
-	collected: Collected_Counts,
-	cubes:     [6]Cube,
-	turn:      int,
+	position:         Position,
+	collected:        Collected_Counts,
+	cubes:            [6]Cube,
+	turn:             int,
+	hustle_remaining: int,
 }
 

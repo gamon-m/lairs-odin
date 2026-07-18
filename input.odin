@@ -106,9 +106,24 @@ handle_moving_input :: proc(
 			handle_cost(player, move_mode)
 		}
 	case .Hustle:
-		if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
-			fmt.println("Hustle")
-			handle_cost(player, move_mode)
+		if player.hustle_remaining == 0 {
+			if !can_afford(player, move_mode) {
+				return
+			}
+			if handle_creep(lair, player, position) {
+				handle_cost(player, move_mode)
+				player.hustle_remaining = 2
+				if lair.grid[position.y][position.x].type != .None {
+					player.hustle_remaining = 0
+				}
+			}
+		} else {
+			if handle_creep(lair, player, position) {
+				player.hustle_remaining -= 1
+				if lair.grid[position.y][position.x].type != .None {
+					player.hustle_remaining = 0
+				}
+			}
 		}
 	case .Backtrack:
 		if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {

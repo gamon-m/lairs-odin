@@ -90,15 +90,24 @@ main :: proc() {
 			}
 		} else if game_state == .Playing {
 			draw_collected_debug(&player)
-			draw_move_type_toggles(&active_move_mode)
+			if player.hustle_remaining > 0 {
+				draw_move_mode_locked(.Hustle)
+				move_mode = .Hustle
+			} else {
+				draw_move_type_toggles(&active_move_mode)
+				move_mode = Move_Type(active_move_mode)
+			}
 			draw_cube_inventory(player.cubes)
-			move_mode = Move_Type(active_move_mode)
 
 			handle_moving_input(&lair, &player, hovered_pos, move_mode)
 
 			draw_turn_count(&player)
+			if player.hustle_remaining > 0 {
+				draw_hustle_count(&player)
+			}
 			if draw_end_turn_button() {
 				player.turn += 1
+				player.hustle_remaining = 0
 			}
 
 			if is_win(&lair, &player) {
