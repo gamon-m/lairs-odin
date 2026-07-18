@@ -102,7 +102,7 @@ handle_moving_input :: proc(
 		if !can_afford(player, move_mode) {
 			return
 		}
-		if handle_creep(lair, player, position) {
+		if handle_creep(lair, player, position, move_mode) {
 			handle_cost(player, move_mode)
 		}
 	case .Hustle:
@@ -110,7 +110,7 @@ handle_moving_input :: proc(
 			if !can_afford(player, move_mode) {
 				return
 			}
-			if handle_creep(lair, player, position) {
+			if handle_creep(lair, player, position, move_mode) {
 				handle_cost(player, move_mode)
 				player.hustle_remaining = 2
 				if lair.grid[position.y][position.x].type != .None {
@@ -118,7 +118,7 @@ handle_moving_input :: proc(
 				}
 			}
 		} else {
-			if handle_creep(lair, player, position) {
+			if handle_creep(lair, player, position, move_mode) {
 				player.hustle_remaining -= 1
 				if lair.grid[position.y][position.x].type != .None {
 					player.hustle_remaining = 0
@@ -127,8 +127,25 @@ handle_moving_input :: proc(
 		}
 	case .Backtrack:
 		if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
-			fmt.println("Backtrack")
-			handle_cost(player, move_mode)
+			cell := lair.grid[position.y][position.x]
+			if cell.hidden {
+				return
+			}
+
+			if !player.backtrack_active {
+				if !can_afford(player, move_mode) {
+					return
+				}
+				handle_cost(player, move_mode)
+				player.backtrack_active = true
+				player.position = position
+			} else {
+				player.position = position
+			}
+
+			if cell.type != .None {
+				player.backtrack_active = false
+			}
 		}
 	case .Peer:
 		if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
@@ -140,11 +157,16 @@ handle_moving_input :: proc(
 	}
 }
 
-handle_creep :: proc(lair: ^Lair, player: ^Player, position: Position) -> bool {
+handle_creep :: proc(
+	lair: ^Lair,
+	player: ^Player,
+	position: Position,
+	move_type: Move_Type,
+) -> bool {
 	direction := get_direction_from_player(player, position)
 
 	if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
-		if !is_move_legal(lair, position, direction) {
+		if !is_move_legal(lair, position, direction, move_type) {
 			return false
 		}
 

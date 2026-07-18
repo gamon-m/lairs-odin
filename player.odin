@@ -2,7 +2,23 @@ package main
 
 import rl "vendor:raylib"
 
-is_move_legal :: proc(lair: ^Lair, pos: Position, dir: rl.Vector2) -> bool {
+init_player :: proc(player: ^Player, pos: Position) {
+	player.position = pos
+	player.collected = {}
+	player.hustle_remaining = 0
+	player.turn = 1
+	player.backtrack_active = false
+	player.cubes = {
+		{stage = .Fresh, type = .Normal},
+		{stage = .Fresh, type = .Normal},
+		{stage = .Fresh, type = .Normal},
+		{stage = .Fresh, type = .Normal},
+		{stage = .Fresh, type = .Energy},
+		{stage = .Fresh, type = .Vision},
+	}
+}
+
+is_move_legal :: proc(lair: ^Lair, pos: Position, dir: rl.Vector2, move_type: Move_Type) -> bool {
 	pos_vector := rl.Vector2{f32(pos.x), f32(pos.y)}
 	new_pos_vector := pos_vector + dir
 	new_pos: Position = {int(new_pos_vector.x), int(new_pos_vector.y)}
@@ -10,23 +26,28 @@ is_move_legal :: proc(lair: ^Lair, pos: Position, dir: rl.Vector2) -> bool {
 		return false
 	}
 
-	wall_in_way: bool = false
-	cell := lair.grid[pos.y][pos.x]
-
-	switch dir {
-	case {0, 1}:
-		wall_in_way = has_wall(cell, .South)
-	case {0, -1}:
-		wall_in_way = has_wall(cell, .North)
-	case {1, 0}:
-		wall_in_way = has_wall(cell, .East)
-	case {-1, 0}:
-		wall_in_way = has_wall(cell, .West)
+	#partial switch move_type {
+	case .Backtrack:
+		return !lair.grid[new_pos.y][new_pos.x].hidden
 	case:
-		return false
-	}
+		wall_in_way: bool = false
+		cell := lair.grid[pos.y][pos.x]
 
-	return !wall_in_way
+		switch dir {
+		case {0, 1}:
+			wall_in_way = has_wall(cell, .South)
+		case {0, -1}:
+			wall_in_way = has_wall(cell, .North)
+		case {1, 0}:
+			wall_in_way = has_wall(cell, .East)
+		case {-1, 0}:
+			wall_in_way = has_wall(cell, .West)
+		case:
+			return false
+		}
+
+		return !wall_in_way
+	}
 }
 
 move_player :: proc(player: ^Player, dir: rl.Vector2) {

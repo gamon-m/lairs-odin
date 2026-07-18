@@ -97,5 +97,7 @@ Player :: struct {
 	cubes:            [6]Cube,
 	turn:             int,
 	hustle_remaining: int,
+	backtrack_active: bool,
+	peer_position:    Position,
 }
 

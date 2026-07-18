@@ -329,6 +329,19 @@ draw_end_turn_button :: proc() -> bool {
 	)
 }
 
+draw_stop_backtrack_button :: proc() -> bool {
+	gui_button_width: i32 = 300
+	return rl.GuiButton(
+		rl.Rectangle {
+			x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
+			y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10 - 50),
+			width = f32(gui_button_width),
+			height = 30,
+		},
+		"Stop Backtrack",
+	)
+}
+
 draw_turn_count :: proc(player: ^Player) {
 	font_size: i32 = 20
 	text := rl.TextFormat("Turn: %d", player.turn)
@@ -348,13 +361,7 @@ draw_hustle_count :: proc(player: ^Player) {
 }
 
 draw_move_mode_locked :: proc(move_mode: Move_Type) {
-	rl.DrawText(
-		rl.TextFormat("Locked: %v", move_mode),
-		10,
-		10,
-		20,
-		rl.DARKGRAY,
-	)
+	rl.DrawText(rl.TextFormat("Locked: %v", move_mode), 10, 10, 20, rl.DARKGRAY)
 }
 
 draw_place_modes_toggles :: proc(active_place_mode: ^i32) {
@@ -380,13 +387,13 @@ draw_win_screen :: proc() {
 	rl.DrawText("You Win!", x, y, 32, rl.BLACK)
 }
 
-draw_legal_moves :: proc(player: ^Player, lair: ^Lair, hovered_position: Position) {
+draw_legal_moves :: proc(player: ^Player, lair: ^Lair, hovered_position: Position, move_type: Move_Type) {
 	player_position := player.position
 
 	directions := [4]rl.Vector2{{0, -1}, {0, 1}, {1, 0}, {-1, 0}}
 
 	for direction in directions {
-		if is_move_legal(lair, player_position, direction) {
+		if is_move_legal(lair, player_position, direction, move_type) {
 			new_x := player_position.x + int(direction.x)
 			new_y := player_position.y + int(direction.y)
 

@@ -69,7 +69,7 @@ main :: proc() {
 		draw_grid(&lair, dungeon_icons)
 		if game_state != .Building {
 			draw_player(&player, dungeon_icons)
-			draw_legal_moves(&player, &lair, hovered_pos)
+			draw_legal_moves(&player, &lair, hovered_pos, move_mode)
 		}
 		rl.EndMode2D()
 
@@ -93,6 +93,9 @@ main :: proc() {
 			if player.hustle_remaining > 0 {
 				draw_move_mode_locked(.Hustle)
 				move_mode = .Hustle
+			} else if player.backtrack_active {
+				draw_move_mode_locked(.Backtrack)
+				move_mode = .Backtrack
 			} else {
 				draw_move_type_toggles(&active_move_mode)
 				move_mode = Move_Type(active_move_mode)
@@ -105,9 +108,15 @@ main :: proc() {
 			if player.hustle_remaining > 0 {
 				draw_hustle_count(&player)
 			}
+			if player.backtrack_active {
+				if draw_stop_backtrack_button() {
+					player.backtrack_active = false
+				}
+			}
 			if draw_end_turn_button() {
 				player.turn += 1
 				player.hustle_remaining = 0
+				player.backtrack_active = false
 			}
 
 			if is_win(&lair, &player) {
