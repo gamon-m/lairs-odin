@@ -109,7 +109,7 @@ main :: proc() {
 			}
 			draw_cube_inventory(player.cubes)
 
-			handle_moving_input(&lair, &player, hovered_pos, move_mode)
+			handle_moving_input(&lair, &player, hovered_pos, move_mode, &active_move_mode)
 
 			draw_turn_count(&player)
 			if player.hustle_remaining > 0 {
@@ -118,11 +118,13 @@ main :: proc() {
 			if player.backtrack_active {
 				if draw_stop_backtrack_button() {
 					player.backtrack_active = false
+					active_move_mode = i32(Move_Type.Creep)
 				}
 			}
 			if player.peer_position != {-1, -1} {
 				if draw_stop_peer_button() {
 					clear_peer_position(&player)
+					active_move_mode = i32(Move_Type.Creep)
 				}
 			}
 			if draw_end_turn_button(&player) {

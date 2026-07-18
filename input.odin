@@ -93,6 +93,7 @@ handle_moving_input :: proc(
 	player: ^Player,
 	position: Position,
 	move_mode: Move_Type,
+	active_move_mode: ^i32,
 ) {
 	if is_out_of_bounds(position) {
 		return
@@ -105,6 +106,7 @@ handle_moving_input :: proc(
 		}
 		if handle_creep(lair, player, position, move_mode) {
 			handle_cost(player, move_mode)
+			active_move_mode^ = i32(Move_Type.Creep)
 		}
 	case .Hustle:
 		if player.hustle_remaining == 0 {
@@ -115,6 +117,8 @@ handle_moving_input :: proc(
 				handle_cost(player, move_mode)
 				if lair.grid[position.y][position.x].type == .None {
 					player.hustle_remaining = 2
+				} else {
+					active_move_mode^ = i32(Move_Type.Creep)
 				}
 			}
 		} else {
@@ -122,6 +126,9 @@ handle_moving_input :: proc(
 				player.hustle_remaining -= 1
 				if lair.grid[position.y][position.x].type != .None {
 					player.hustle_remaining = 0
+				}
+				if player.hustle_remaining == 0 {
+					active_move_mode^ = i32(Move_Type.Creep)
 				}
 			}
 		}
@@ -145,6 +152,7 @@ handle_moving_input :: proc(
 
 			if cell.type != .None {
 				player.backtrack_active = false
+				active_move_mode^ = i32(Move_Type.Creep)
 			}
 		}
 	case .Peer:
@@ -168,6 +176,7 @@ handle_moving_input :: proc(
 				}
 				player.position = position
 				clear_peer_position(player)
+				active_move_mode^ = i32(Move_Type.Creep)
 			}
 		}
 	}
