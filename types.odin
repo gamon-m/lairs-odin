@@ -76,7 +76,6 @@ Move_Type :: enum i32 {
 	Hustle,
 	Backtrack,
 	Peer,
-	Conserve,
 }
 
 Position :: struct {

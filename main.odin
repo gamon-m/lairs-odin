@@ -69,7 +69,11 @@ main :: proc() {
 		draw_grid(&lair, dungeon_icons)
 		if game_state != .Building {
 			draw_player(&player, dungeon_icons)
-			draw_legal_moves(&player, &lair, hovered_pos, move_mode)
+			if move_mode == .Peer && player.peer_position != {-1, -1} {
+				draw_peer_target_highlight(&player, hovered_pos)
+			} else {
+				draw_legal_moves(&player, &lair, hovered_pos, move_mode)
+			}
 		}
 		rl.EndMode2D()
 
@@ -96,6 +100,9 @@ main :: proc() {
 			} else if player.backtrack_active {
 				draw_move_mode_locked(.Backtrack)
 				move_mode = .Backtrack
+			} else if player.peer_position != {-1, -1} {
+				draw_move_mode_locked(.Peer)
+				move_mode = .Peer
 			} else {
 				draw_move_type_toggles(&active_move_mode)
 				move_mode = Move_Type(active_move_mode)
@@ -113,10 +120,18 @@ main :: proc() {
 					player.backtrack_active = false
 				}
 			}
-			if draw_end_turn_button() {
+			if player.peer_position != {-1, -1} {
+				if draw_stop_peer_button() {
+					clear_peer_position(&player)
+				}
+			}
+			if draw_end_turn_button(&player) {
 				player.turn += 1
 				player.hustle_remaining = 0
 				player.backtrack_active = false
+				clear_peer_position(&player)
+				conserve_cubes(&player)
+				reset_cubes(&player)
 			}
 
 			if is_win(&lair, &player) {

@@ -316,8 +316,24 @@ draw_finish_building_button :: proc() -> bool {
 	)
 }
 
-draw_end_turn_button :: proc() -> bool {
+draw_end_turn_button :: proc(player: ^Player) -> bool {
+	count_fresh := 0
+	for i in 0 ..< len(player.cubes) {
+		if player.cubes[i].stage == .Fresh {
+			count_fresh += 1
+		}
+	}
+
 	gui_button_width: i32 = 300
+	gui_button_text: cstring = "End Turn"
+	if count_fresh > 0 {
+		gui_button_text = "Conserve & End Turn"
+	}
+
+	if count_fresh > 3 {
+		return false
+	}
+
 	return rl.GuiButton(
 		rl.Rectangle {
 			x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
@@ -325,7 +341,7 @@ draw_end_turn_button :: proc() -> bool {
 			width = f32(gui_button_width),
 			height = 30,
 		},
-		"End Turn",
+		gui_button_text,
 	)
 }
 
@@ -339,6 +355,19 @@ draw_stop_backtrack_button :: proc() -> bool {
 			height = 30,
 		},
 		"Stop Backtrack",
+	)
+}
+
+draw_stop_peer_button :: proc() -> bool {
+	gui_button_width: i32 = 300
+	return rl.GuiButton(
+		rl.Rectangle {
+			x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
+			y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10 - 50),
+			width = f32(gui_button_width),
+			height = 30,
+		},
+		"Stop Peer",
 	)
 }
 
@@ -375,7 +404,7 @@ draw_place_modes_toggles :: proc(active_place_mode: ^i32) {
 draw_move_type_toggles :: proc(move_type: ^i32) {
 	rl.GuiToggleGroup(
 		rl.Rectangle{x = 10, y = 10, height = 30, width = 150},
-		"Creep\nHustle\nBacktrack\nPeer\nConserve",
+		"Creep\nHustle\nBacktrack\nPeer",
 		move_type,
 	)
 }
@@ -387,30 +416,44 @@ draw_win_screen :: proc() {
 	rl.DrawText("You Win!", x, y, 32, rl.BLACK)
 }
 
-draw_legal_moves :: proc(player: ^Player, lair: ^Lair, hovered_position: Position, move_type: Move_Type) {
+draw_highlight_cell :: proc(pos: Position, is_hovered: bool) {
+	x := f32(pos.x) * CELL_SIZE + INSET
+	y := f32(pos.y) * CELL_SIZE + INSET
+
+	rl.DrawRectangleRec(
+		rl.Rectangle{x = x, y = y, width = SIZE, height = SIZE},
+		rl.Color{0, 255, 0, 40},
+	)
+
+	if is_hovered {
+		rl.DrawRectangleRec(
+			rl.Rectangle{x = x, y = y, width = SIZE, height = SIZE},
+			rl.Color{0, 255, 0, 80},
+		)
+	}
+}
+
+draw_peer_target_highlight :: proc(player: ^Player, hovered_position: Position) {
+	draw_highlight_cell(player.peer_position, player.peer_position == hovered_position)
+}
+
+draw_legal_moves :: proc(
+	player: ^Player,
+	lair: ^Lair,
+	hovered_position: Position,
+	move_type: Move_Type,
+) {
 	player_position := player.position
 
 	directions := [4]rl.Vector2{{0, -1}, {0, 1}, {1, 0}, {-1, 0}}
 
 	for direction in directions {
 		if is_move_legal(lair, player_position, direction, move_type) {
-			new_x := player_position.x + int(direction.x)
-			new_y := player_position.y + int(direction.y)
-
-			pos_x := f32(new_x) * CELL_SIZE + INSET
-			pos_y := f32(new_y) * CELL_SIZE + INSET
-
-			if new_x == hovered_position.x && new_y == hovered_position.y {
-				rl.DrawRectangleRec(
-					rl.Rectangle{x = pos_x, y = pos_y, width = SIZE, height = SIZE},
-					rl.Color{0, 255, 0, 80},
-				)
+			new_pos := Position {
+				x = player_position.x + int(direction.x),
+				y = player_position.y + int(direction.y),
 			}
-
-			rl.DrawRectangleRec(
-				rl.Rectangle{x = pos_x, y = pos_y, width = SIZE, height = SIZE},
-				rl.Color{0, 255, 0, 40},
-			)
+			draw_highlight_cell(new_pos, new_pos == hovered_position)
 		}
 	}
 }

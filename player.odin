@@ -8,6 +8,7 @@ init_player :: proc(player: ^Player, pos: Position) {
 	player.hustle_remaining = 0
 	player.turn = 1
 	player.backtrack_active = false
+	player.peer_position = Position{-1, -1}
 	player.cubes = {
 		{stage = .Fresh, type = .Normal},
 		{stage = .Fresh, type = .Normal},
@@ -26,28 +27,31 @@ is_move_legal :: proc(lair: ^Lair, pos: Position, dir: rl.Vector2, move_type: Mo
 		return false
 	}
 
+	valid := true
+	wall_in_way: bool = false
+	cell := lair.grid[pos.y][pos.x]
+
 	#partial switch move_type {
 	case .Backtrack:
-		return !lair.grid[new_pos.y][new_pos.x].hidden
-	case:
-		wall_in_way: bool = false
-		cell := lair.grid[pos.y][pos.x]
-
-		switch dir {
-		case {0, 1}:
-			wall_in_way = has_wall(cell, .South)
-		case {0, -1}:
-			wall_in_way = has_wall(cell, .North)
-		case {1, 0}:
-			wall_in_way = has_wall(cell, .East)
-		case {-1, 0}:
-			wall_in_way = has_wall(cell, .West)
-		case:
-			return false
-		}
-
-		return !wall_in_way
+		valid = !lair.grid[new_pos.y][new_pos.x].hidden
+	case .Peer:
+		valid = lair.grid[new_pos.y][new_pos.x].hidden
 	}
+
+	switch dir {
+	case {0, 1}:
+		wall_in_way = has_wall(cell, .South)
+	case {0, -1}:
+		wall_in_way = has_wall(cell, .North)
+	case {1, 0}:
+		wall_in_way = has_wall(cell, .East)
+	case {-1, 0}:
+		wall_in_way = has_wall(cell, .West)
+	case:
+		return false
+	}
+
+	return valid && !wall_in_way
 }
 
 move_player :: proc(player: ^Player, dir: rl.Vector2) {
@@ -82,7 +86,7 @@ get_direction_from_player :: proc(player: ^Player, position: Position) -> rl.Vec
 	player_pos := rl.Vector2{f32(player.position.x), f32(player.position.y)}
 	current_pos := rl.Vector2{f32(position.x), f32(position.y)}
 
-	return player_pos - current_pos
+	return current_pos - player_pos
 }
 
 handle_cost :: proc(player: ^Player, move_mode: Move_Type) {
@@ -104,7 +108,6 @@ handle_cost :: proc(player: ^Player, move_mode: Move_Type) {
 		} else {
 			use_cubes(available_cubes, 2, .Normal)
 		}
-	case .Conserve:
 	}
 }
 
@@ -137,10 +140,6 @@ can_afford :: proc(player: ^Player, move_mode: Move_Type) -> bool {
 		}
 	case .Peer:
 		if vision_cubes > 0 || normal_cubes >= 2 {
-			return true
-		}
-	case .Conserve:
-		if energy_cubes > 0 || vision_cubes > 0 || normal_cubes > 0 {
 			return true
 		}
 	}
@@ -182,5 +181,40 @@ count_available_cubes :: proc(cubes: [dynamic]^Cube, type: Cube_Type) -> int {
 		}
 	}
 	return count
+}
+
+get_fresh_cubes :: proc(player: ^Player) -> [dynamic]^Cube {
+	fresh_cubes: [dynamic]^Cube
+	for i in 0 ..< len(player.cubes) {
+		if player.cubes[i].stage == .Fresh {
+			append(&fresh_cubes, &player.cubes[i])
+		}
+	}
+	return fresh_cubes
+}
+
+is_peer_active :: proc(player: ^Player) -> bool {
+	return player.peer_position.x != -1 || player.peer_position.y != -1
+}
+
+clear_peer_position :: proc(player: ^Player) {
+	player.peer_position = Position{-1, -1}
+}
+
+reset_cubes :: proc(player: ^Player) {
+	for i in 0 ..< len(player.cubes) {
+		if player.cubes[i].stage == .Spent {
+			player.cubes[i].stage = .Fresh
+		} else if player.cubes[i].stage == .Fatigued {
+			player.cubes[i].stage = .Spent
+		}
+	}
+}
+
+conserve_cubes :: proc(player: ^Player) {
+	fresh_cubes := get_fresh_cubes(player)
+	for cube in fresh_cubes {
+		cube.stage = .Conserved
+	}
 }
 

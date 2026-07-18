@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "vendor:directx/d3d11"
 import rl "vendor:raylib"
 
 handle_building_input :: proc(lair: ^Lair, world_pos: rl.Vector2, place_mode: ^Placing_State) {
@@ -112,9 +113,8 @@ handle_moving_input :: proc(
 			}
 			if handle_creep(lair, player, position, move_mode) {
 				handle_cost(player, move_mode)
-				player.hustle_remaining = 2
-				if lair.grid[position.y][position.x].type != .None {
-					player.hustle_remaining = 0
+				if lair.grid[position.y][position.x].type == .None {
+					player.hustle_remaining = 2
 				}
 			}
 		} else {
@@ -149,11 +149,27 @@ handle_moving_input :: proc(
 		}
 	case .Peer:
 		if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
-			fmt.println("Peer")
-			handle_cost(player, move_mode)
-		}
-	case .Conserve:
+			cell := &lair.grid[position.y][position.x]
 
+			if player.peer_position == {-1, -1} {
+				direction := get_direction_from_player(player, position)
+				if !is_move_legal(lair, player.position, direction, move_mode) {
+					return
+				}
+				if !can_afford(player, move_mode) {
+					return
+				}
+				handle_cost(player, move_mode)
+				player.peer_position = position
+				cell.hidden = false
+			} else {
+				if position != player.peer_position {
+					return
+				}
+				player.position = position
+				clear_peer_position(player)
+			}
+		}
 	}
 }
 
@@ -166,7 +182,7 @@ handle_creep :: proc(
 	direction := get_direction_from_player(player, position)
 
 	if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
-		if !is_move_legal(lair, position, direction, move_type) {
+		if !is_move_legal(lair, player.position, direction, move_type) {
 			return false
 		}
 
