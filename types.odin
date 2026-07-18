@@ -24,9 +24,10 @@ Cell_Type :: enum u8 {
 Wall_Flags :: bit_set[Wall_Side;u8]
 
 Space :: struct {
-	walls:  Wall_Flags,
-	type:   Cell_Type,
-	hidden: bool,
+	walls:     Wall_Flags,
+	type:      Cell_Type,
+	hidden:    bool,
+	collected: bool,
 }
 
 Placed_Counts :: struct {

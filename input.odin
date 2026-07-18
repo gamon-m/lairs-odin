@@ -1,7 +1,6 @@
 package main
 
 import "core:fmt"
-import "vendor:directx/d3d11"
 import rl "vendor:raylib"
 
 handle_building_input :: proc(lair: ^Lair, world_pos: rl.Vector2, place_mode: ^Placing_State) {
@@ -145,9 +144,9 @@ handle_moving_input :: proc(
 				}
 				handle_cost(player, move_mode)
 				player.backtrack_active = true
-				player.position = position
+				move_player(lair, player, position)
 			} else {
-				player.position = position
+				move_player(lair, player, position)
 			}
 
 			if cell.type != .None {
@@ -174,7 +173,7 @@ handle_moving_input :: proc(
 				if position != player.peer_position {
 					return
 				}
-				player.position = position
+				move_player(lair, player, position)
 				clear_peer_position(player)
 				active_move_mode^ = i32(Move_Type.Creep)
 			}
@@ -195,8 +194,7 @@ handle_creep :: proc(
 			return false
 		}
 
-		player.position = position
-		lair.grid[position.y][position.x].hidden = false
+		move_player(lair, player, position)
 		return true
 	}
 	return false

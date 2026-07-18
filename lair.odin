@@ -9,6 +9,7 @@ init_lair :: proc(lair: ^Lair) {
 			cell := &lair.grid[y][x]
 			cell.hidden = true
 			cell.type = .None
+			cell.collected = false
 		}
 	}
 	lair.start_pos = {

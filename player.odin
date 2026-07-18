@@ -54,17 +54,10 @@ is_move_legal :: proc(lair: ^Lair, pos: Position, dir: rl.Vector2, move_type: Mo
 	return valid && !wall_in_way
 }
 
-move_player :: proc(player: ^Player, dir: rl.Vector2) {
-	current_position := player.position
-	position_vector := rl.Vector2{f32(current_position.x), f32(current_position.y)}
-
-	new_position_vector := position_vector + dir
-	new_position: Position = {
-		x = int(new_position_vector.x),
-		y = int(new_position_vector.y),
-	}
-
-	player.position = new_position
+move_player :: proc(lair: ^Lair, player: ^Player, new_pos: Position) {
+	player.position = new_pos
+	lair.grid[new_pos.y][new_pos.x].hidden = false
+	update_collected(lair, player)
 }
 
 is_win :: proc(lair: ^Lair, player: ^Player) -> bool {
@@ -216,5 +209,22 @@ conserve_cubes :: proc(player: ^Player) {
 	for cube in fresh_cubes {
 		cube.stage = .Conserved
 	}
+}
+
+update_collected :: proc(lair: ^Lair, player: ^Player) {
+	cell := &lair.grid[player.position.y][player.position.x]
+	if cell.collected {
+		return
+	}
+
+	#partial switch cell.type {
+	case .Treasure:
+		player.collected.Treasures += 1
+	case .Monster:
+		player.collected.Monsters += 1
+	case .Trap:
+		player.collected.Traps += 1
+	}
+	cell.collected = true
 }
 
