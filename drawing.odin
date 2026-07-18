@@ -316,6 +316,28 @@ draw_finish_building_button :: proc() -> bool {
 	)
 }
 
+draw_end_turn_button :: proc() -> bool {
+	gui_button_width: i32 = 300
+	return rl.GuiButton(
+		rl.Rectangle {
+			x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
+			y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10),
+			width = f32(gui_button_width),
+			height = 30,
+		},
+		"End Turn",
+	)
+}
+
+draw_turn_count :: proc(player: ^Player) {
+	font_size: i32 = 20
+	text := rl.TextFormat("Turn: %d", player.turn)
+	text_width := rl.MeasureText(text, font_size)
+	x := f32(rl.GetScreenWidth() / 2 - text_width / 2)
+	y := f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10 - 40)
+	rl.DrawText(text, i32(x), i32(y), font_size, rl.BLACK)
+}
+
 draw_place_modes_toggles :: proc(active_place_mode: ^i32) {
 	rl.GuiToggleGroup(
 		rl.Rectangle{x = 10, y = 10, height = 30, width = 150},

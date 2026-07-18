@@ -96,6 +96,11 @@ main :: proc() {
 
 			handle_moving_input(&lair, &player, hovered_pos, move_mode)
 
+			draw_turn_count(&player)
+			if draw_end_turn_button() {
+				player.turn += 1
+			}
+
 			if is_win(&lair, &player) {
 				draw_win_screen()
 			}
