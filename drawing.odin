@@ -231,8 +231,8 @@ draw_player :: proc(player: ^Player, sheet: rl.Texture) {
 }
 
 draw_debug :: proc(lair: ^Lair) {
-	x := f32(rl.GetScreenWidth() - 200)
-	y := f32(rl.GetScreenHeight() - 150)
+	x := f32(screen_width - 200)
+	y := f32(screen_height - 150)
 	rl.DrawText(
 		rl.TextFormat("Walls: %d/%d", lair.placed_counts.Walls, WALL_LIMIT),
 		i32(x),
@@ -278,8 +278,8 @@ draw_debug :: proc(lair: ^Lair) {
 }
 
 draw_collected_debug :: proc(player: ^Player) {
-	x := f32(rl.GetScreenWidth() - 200)
-	y := f32(rl.GetScreenHeight() - 100)
+	x := f32(screen_width - 200)
+	y := f32(screen_height - 100)
 	rl.DrawText(
 		rl.TextFormat("Treasures: %d", player.collected.Treasures),
 		i32(x),
@@ -307,8 +307,8 @@ draw_finish_building_button :: proc() -> bool {
 	gui_button_width: i32 = 300
 	return rl.GuiButton(
 		rl.Rectangle {
-			x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
-			y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10),
+			x = f32(screen_width / 2 - (gui_button_width / 2)),
+			y = f32(screen_height - screen_height / 10),
 			width = f32(gui_button_width),
 			height = 30,
 		},
@@ -336,8 +336,8 @@ draw_end_turn_button :: proc(player: ^Player) -> bool {
 
 	return rl.GuiButton(
 		rl.Rectangle {
-			x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
-			y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10),
+			x = f32(screen_width / 2 - (gui_button_width / 2)),
+			y = f32(screen_height - screen_height / 10),
 			width = f32(gui_button_width),
 			height = 30,
 		},
@@ -349,8 +349,8 @@ draw_stop_backtrack_button :: proc() -> bool {
 	gui_button_width: i32 = 300
 	return rl.GuiButton(
 		rl.Rectangle {
-			x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
-			y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10 - 50),
+			x = f32(screen_width / 2 - (gui_button_width / 2)),
+			y = f32(screen_height - screen_height / 10 - 50),
 			width = f32(gui_button_width),
 			height = 30,
 		},
@@ -362,8 +362,8 @@ draw_stop_peer_button :: proc() -> bool {
 	gui_button_width: i32 = 300
 	return rl.GuiButton(
 		rl.Rectangle {
-			x = f32(rl.GetScreenWidth() / 2 - (gui_button_width / 2)),
-			y = f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10 - 50),
+			x = f32(screen_width / 2 - (gui_button_width / 2)),
+			y = f32(screen_height - screen_height / 10 - 50),
 			width = f32(gui_button_width),
 			height = 30,
 		},
@@ -375,8 +375,8 @@ draw_turn_count :: proc(player: ^Player) {
 	font_size: i32 = 20
 	text := rl.TextFormat("Turn: %d", player.turn)
 	text_width := rl.MeasureText(text, font_size)
-	x := f32(rl.GetScreenWidth() / 2 - text_width / 2)
-	y := f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10 - 40)
+	x := f32(screen_width / 2 - text_width / 2)
+	y := f32(screen_height - screen_height / 10 - 40)
 	rl.DrawText(text, i32(x), i32(y), font_size, rl.BLACK)
 }
 
@@ -384,8 +384,8 @@ draw_hustle_count :: proc(player: ^Player) {
 	font_size: i32 = 20
 	text := rl.TextFormat("Hustle moves: %d", player.hustle_remaining)
 	text_width := rl.MeasureText(text, font_size)
-	x := f32(rl.GetScreenWidth() / 2 - text_width / 2)
-	y := f32(rl.GetScreenHeight() - rl.GetScreenHeight() / 10 - 70)
+	x := f32(screen_width / 2 - text_width / 2)
+	y := f32(screen_height - screen_height / 10 - 70)
 	rl.DrawText(text, i32(x), i32(y), font_size, rl.BLACK)
 }
 
@@ -410,8 +410,8 @@ draw_move_type_toggles :: proc(move_type: ^i32) {
 }
 
 draw_win_screen :: proc() {
-	x := rl.GetScreenWidth() / 2 - 50
-	y := rl.GetScreenHeight() / 6
+	x := screen_width / 2 - 50
+	y := screen_height / 6
 
 	rl.DrawText("You Win!", x, y, 32, rl.BLACK)
 }
@@ -471,7 +471,7 @@ draw_cube_inventory :: proc(cubes: [6]Cube) {
 
 	line_count: i32 = len(stage_order)
 	total_height: i32 = line_count * Y_SPACING
-	start_y := rl.GetScreenHeight() - total_height - 20
+	start_y := screen_height - total_height - 20
 
 	for i in 0 ..< line_count {
 		draw_cube_stage(stages[Cube_Stage(i)], i, start_y)
