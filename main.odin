@@ -6,15 +6,18 @@ import rl "vendor:raylib"
 
 game_state: Game_States = .Building
 
+screen_width:  i32
+screen_height: i32
+
+initial_screen_width:  i32 = 1280
+initial_screen_height: i32 = 720
+
 main :: proc() {
 	lair: Lair
 	init_lair(&lair)
 
 	player: Player
 	init_player(&player, {-1, -1})
-
-	screen_width :: 1280
-	screen_height :: 720
 
 	place_mode := Placing_State.Walls
 	active_place_mode := i32(place_mode)
@@ -26,8 +29,11 @@ main :: proc() {
 
 	rl.SetConfigFlags(rl.ConfigFlags{.WINDOW_RESIZABLE})
 
-	rl.InitWindow(screen_width, screen_height, "Title")
+	rl.InitWindow(initial_screen_width, initial_screen_height, "Title")
 	defer rl.CloseWindow()
+
+	screen_width = rl.GetScreenWidth()
+	screen_height = rl.GetScreenHeight()
 	rl.SetTargetFPS(60)
 	rl.SetExitKey(.ESCAPE)
 	font := rl.LoadFont("fonts/PixelOperator.ttf")
@@ -40,20 +46,23 @@ main :: proc() {
 
 	camera := rl.Camera2D{}
 	camera.target = {CELL_SIZE * f32(GRID_SIZE) / 2, CELL_SIZE * f32(GRID_SIZE) / 2}
-	camera.offset = rl.Vector2{f32(rl.GetScreenWidth()) / 2.0, f32(rl.GetScreenHeight()) / 2.0}
+	camera.offset = rl.Vector2{f32(screen_width) / 2.0, f32(screen_height) / 2.0}
 	camera.zoom = 4
 
 	mouse_pos: rl.Vector2
 	world_pos: rl.Vector2
 
 	for !rl.WindowShouldClose() {
+		screen_width = rl.GetScreenWidth()
+		screen_height = rl.GetScreenHeight()
+
 		if rl.IsWindowResized() {
-			scale_x := f32(rl.GetScreenWidth()) / f32(screen_width)
-			scale_y := f32(rl.GetScreenHeight()) / f32(screen_height)
+			scale_x := f32(screen_width) / f32(initial_screen_width)
+			scale_y := f32(screen_height) / f32(initial_screen_height)
 			scale: f32 = math.min(scale_x, scale_y)
 
 			camera.zoom = scale * 4
-			camera.offset = {f32(rl.GetScreenWidth() / 2), f32(rl.GetScreenHeight() / 2)}
+			camera.offset = {f32(screen_width / 2), f32(screen_height / 2)}
 		}
 
 		mouse_pos = rl.GetMousePosition()
